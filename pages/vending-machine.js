@@ -3,11 +3,10 @@ import { useState, useEffect } from 'react'
 import Web3 from 'web3'
 import vendingMachineContract from '../blockchain/vending'
 import 'bulma/css/bulma.css'
+import LoadingOverlay from 'react-loading-overlay-ts';
 import styles from '../styles/VendingMachine.module.css'
-
+import Swal from 'sweetalert2'
 const VendingMachine = () => {
-    const [error, setError] = useState('')
-    const [successMsg, setSuccessMsg] = useState('')
     const [inventory, setInventory] = useState('')
     const [myDonutCount, setMyDonutCount] = useState('')
     const [buyCount, setBuyCount] = useState('')
@@ -38,26 +37,31 @@ const VendingMachine = () => {
     const buyDonutHandler = async () => {
         try {
             setLoading(true);
-            // await vmContract.methods.purchase(buyCount).send({
-            //   from: address,
-            //   value: web3.utils.toWei('0.0001', 'ether') * buyCount,
-            // });
 
-            console.log("try to purchase")
             await vmContract.methods.purchase(parseInt(buyCount)).send({
                 from: address,
                 value: web3.utils.toWei('0.0001', 'ether') * buyCount,
                 gas: 3000000,
                 gasPrice: null
             });
-            setSuccessMsg(`${buyCount} donuts purchased!`)
 
             if (vmContract) getInventoryHandler()
             if (vmContract && address) getMyDonutCountHandler()
             setLoading(false);
+            Swal.fire(
+                'Yippie!',
+                `You have successfully purchased ${buyCount} donuts`,
+                'success'
+            );
+            setBuyCount("");
         } catch (err) {
             setLoading(false);
-            setError(err.message)
+            setBuyCount("");
+            Swal.fire(
+                'Oops!',
+                `Transaction failed`,
+                'error'
+            );
         }
     }
 
@@ -80,66 +84,137 @@ const VendingMachine = () => {
                 /* create local contract copy */
                 const vm = vendingMachineContract(web3)
                 setVmContract(vm)
+                Swal.fire(
+                    'Yayy!',
+                    `Wallet succesfully connected`,
+                    'success'
+                );
             } catch (err) {
-                setError(err.message)
+                Swal.fire(
+                    'Oops!',
+                    `Connections error`,
+                    'error'
+                );
             }
         } else {
-            // meta mask is not installed
-            console.log("Please install MetaMask")
+            Swal.fire(
+                'Oops!',
+                `No wallet found`,
+                'error'
+            );
         }
     }
 
+    const reStock = async () => {
+        await vmContract.methods.restock(parseInt(2)).call();
+        if (vmContract) getInventoryHandler()
+        if (vmContract && address) getMyDonutCountHandler()
+    }
+
     return (
-        <div className={styles.main}>
-            <Head>
-                <title>VendingMachine App</title>
-                <meta name="description" content="A blockchain vending app" />
-            </Head>
-            <nav className="navbar mt-4 mb-4">
-                <div className="container">
-                    <div className="navbar-brand">
-                        <h1>Vending Machine</h1>
+
+        <LoadingOverlay
+            active={loading}
+            spinner
+            text="Transaction in process"
+        >
+            <div className={styles.main} >
+                <Head>
+                    <title>VendingMachine App</title>
+                    <meta name="description" content="A blockchain vending app" />
+                </Head>
+                <nav className="navbar is-dark is-fixed-top" role="navigation" aria-label='main navigation'
+                    style={{
+                        paddingLeft: '70px',
+                        paddingRight: '70px',
+                        paddingTop: '20px',
+                    }}
+                >
+                    <div className="navbar-brand"
+                    >
+                        <a className="navbar-item" href="https://bulma.io">
+                            <img src="https://ethereum.org/static/a110735dade3f354a46fc2446cd52476/db4de/eth-home-icon.webp" />
+                        </a>
+                        <div className="navbar-brand">
+                            <h1>Donut Xpress</h1>
+                        </div>
                     </div>
                     <div className="navbar-end">
+                        {/* <button onClick={reStock} className="button is-warning"
+                            style={{
+                                marginRight: "20px",
+                            }}>Restock</button> */}
                         <button onClick={connectWalletHandler} className="button is-primary">Connect Wallet</button>
                     </div>
-                </div>
-            </nav>
-            <section>
-                <div className="container">
-                    <h2>Vending machine inventory: {inventory}</h2>
-                </div>
-            </section>
-            <section>
-                <div className="container">
-                    <h2>My donuts: {myDonutCount}</h2>
-                </div>
-            </section>
-            <section className="mt-5">
-                <div className="container">
-                    <div className="field">
-                        <label className="label">Buy donuts</label>
-                        <div className="control">
-                            <input onChange={updateDonutQty} className="input" type="type" placeholder="Enter amount..." />
+                </nav>
+                <br />
+                <br />
+                <br />
+                <br />
+                <br />
+                <div className="columns">
+                    <div className="column">
+                        <div className={styles.description}
+                            style={{
+                                paddingLeft: '100px',
+                                paddingTop: '80px',
+                            }}
+                        >
+                            Donut Xpress, a vending machine dapp to purchase donuts using Ethereum Wallet.
+                            One donut costs <b>0.0001 eth</b>. You can view the number of donuts you have purchased on the blockchain.
+                            <br /><br />
+                            Don’t worry, we’ll never run out of donuts because the owner restocks the inventory regularly!
                         </div>
-                        <button
-                            onClick={buyDonutHandler}
-                            className="button is-primary mt-2"
-                        >Buy</button>
+                    </div>
+                    <div className="column">
+                        <img src="/donut_machine.png" />
                     </div>
                 </div>
-            </section>
-            <section>
-                <div className="container has-text-danger">
-                    <p>{error}</p>
-                </div>
-            </section>
-            <section>
-                <div className="container has-text-success">
-                    <p>{successMsg}</p>
-                </div>
-            </section>
-        </div>
+
+
+                <section>
+                    <div className={styles.description}
+                        style={{
+                            paddingLeft: '100px',
+                        }}
+                    >
+                        <h2>Vending machine inventory: {inventory}</h2>
+                    </div>
+                </section>
+                <section>
+                    <div className={styles.description}
+                        style={{
+                            paddingLeft: '100px',
+                        }}
+                    >
+                        <h2>My donuts: {myDonutCount}</h2>
+                    </div>
+                </section>
+                <section className="mt-5">
+                    <div className="container">
+                        <div className="field">
+                            <label className="label">
+                                <div className={styles.description}
+                                >
+                                    Buy Donuts
+                                </div>
+                            </label>
+                            <div className="control"
+                                style={{
+                                    width: "20%",
+                                }}
+                            >
+                                <input value={buyCount} onChange={updateDonutQty} className="input is-hovered" type="type" placeholder="Enter amount..." />
+                            </div>
+                            <button
+                                onClick={buyDonutHandler}
+                                className="button is-primary mt-2"
+                            >Buy</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </LoadingOverlay>
     )
 }
 
